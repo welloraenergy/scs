@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Claim System</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 10px auto; background-color: #f4f7f6; }
+    .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h2 { margin-top: 0; color: #333; border-bottom: 2px solid #008CBA; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #555; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .submit-btn { background-color: #008CBA; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+    .submit-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+    #msg, #statusMsg { text-align: center; font-weight: bold; margin-top: 15px; }
+    .hidden { display: none; }
+    .logout-bar { text-align: right; margin-bottom: 10px; }
+    .logout-bar button { background: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    
+    .claim-item-row { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; }
+    .remove-row-btn { background: #d9534f; color: white; border: none; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; float: right; margin-bottom: 10px; }
+    .action-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .add-row-btn { background: #5cb85c; color: white; border: none; padding: 10px 15px; font-weight: bold; border-radius: 4px; cursor: pointer; flex: 1; }
+    .add-row-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .zip-section { background: #eef6f9; padding: 15px; border: 1px dashed #008CBA; border-radius: 6px; margin-bottom: 20px; }
+    
+    /* Clean Responsive File Input Wrapper */
+    .file-input-wrapper { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .file-input-wrapper input[type="file"] { flex: 1; min-width: 200px; }
+    .clear-file-btn { background: #f0ad4e; color: white; border: none; padding: 9px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+    
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .nav-tab-btn { background: #ddd; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+    .nav-tab-btn.active { background: #008CBA; color: white; }
+    
+    .history-card { border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 15px; background: #fafafa; }
+    .pending-badge { background: #f0ad4e; color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+    .approved-badge { background: #5cb85c; color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+    .rejected-badge { background: #d9534f; color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+
+    /* Mobile specific adjustments to stack clear button below nicely */
+    @media (max-width: 600px) {
+      .file-input-wrapper { flex-direction: column; align-items: stretch; }
+      .clear-file-btn { width: 100%; margin-top: 5px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN SECTION -->
+  <div class="card" id="loginCard">
+    <h2>Staff Login</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Assigned Email:</label>
+        <input type="email" id="loginEmail" placeholder="e.g. staff@company.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password:</label>
+        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="submit-btn" id="loginBtn">Login</button>
+      <p id="msg"></p>
+    </form>
+  </div>
+
+  <!-- EXPENSE CLAIM MAIN DASHBOARD SECTION -->
+  <div class="card hidden" id="claimCard">
+    <div class="logout-bar">
+      <span id="loggedInUserDisplay" style="font-weight:bold; margin-right:15px;"></span>
+      <button type="button" id="logoutBtn">Logout</button>
+    </div>
+    
+    <div class="nav-tabs">
+      <button type="button" class="nav-tab-btn active" id="tabSubmitBtn" onclick="switchTab('submit')">Submit New Claim</button>
+      <button type="button" class="nav-tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">My Claim History</button>
+    </div>
+
+    <!-- TAB 1: SUBMIT CLAIM -->
+    <div id="sectionSubmit">
+      <h2>Submit Expense Claim</h2>
+      <form id="expenseForm">
+        
+        <div class="zip-section">
+          <label style="font-weight:bold; font-size:14px; color:#008CBA; margin-bottom:5px; display:block;">Alternative: Upload All Receipts as a ZIP File (Optional, Max 1MB)</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="zipFile" accept=".zip">
+            <button type="button" class="clear-file-btn" onclick="clearZipFile()">Clear File</button>
+          </div>
+        </div>
+
+        <div id="itemsContainer"></div>
+
+        <div class="action-row">
+          <button type="button" class="add-row-btn" id="addRowBtn">+ Add Item (Max 10)</button>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Submit Claim</button>
+        <p id="statusMsg"></p>
+      </form>
+    </div>
+
+    <!-- TAB 2: CLAIM HISTORY -->
+    <div id="sectionHistory" class="hidden">
+      <h2>My Claim History & Editable Pending Items</h2>
+      <div id="historyContainer">Loading history...</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD_adZXBXAXC5ujuKOqAYCnJxSYBMXXXIw",
+      authDomain: "staff-claim-system.firebaseapp.com",
+      projectId: "staff-claim-system",
+      storageBucket: "staff-claim-system.firebasestorage.app",
+      messagingSenderId: "270565705554",
+      appId: "1:270565705554:web:819361bd91304d35a59c8b",
+      measurementId: "G-HZ4MVJM549"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    let currentUserEmail = "";
+    let myClaimsCache = [];
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const msg = document.getElementById('msg');
+      const btn = document.getElementById('loginBtn');
+
+      btn.disabled = true;
+      msg.style.color = "#333";
+      msg.innerText = "Verifying credentials...";
+
+      try {
+        const q = query(collection(db, "users"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          msg.style.color = "red";
+          msg.innerText = "Email not found in authorized user database.";
+          btn.disabled = false;
+          return;
+        }
+
+        let userDocData = null;
+        querySnapshot.forEach((doc) => { userDocData = doc.data(); });
+
+        if (userDocData.password === password) {
+          currentUserEmail = email;
+          document.getElementById('loggedInUserDisplay').innerText = email;
+          document.getElementById('loginCard').classList.add('hidden');
+          document.getElementById('claimCard').classList.remove('hidden');
+          document.getElementById('loginForm').reset();
+          msg.innerText = "";
+          
+          switchTab('submit');
+          document.getElementById('itemsContainer').innerHTML = "";
+          addClaimRow();
+        } else {
+          msg.style.color = "red";
+          msg.innerText = "Incorrect password.";
+        }
+      } catch (error) {
+        console.error(error);
+        msg.style.color = "red";
+        msg.innerText = "Error: " + error.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+      currentUserEmail = "";
+      document.getElementById('claimCard').classList.add('hidden');
+      document.getElementById('loginCard').classList.remove('hidden');
+    });
+
+    window.switchTab = function(tabName) {
+      if (tabName === 'submit') {
+        document.getElementById('sectionSubmit').classList.remove('hidden');
+        document.getElementById('sectionHistory').classList.add('hidden');
+        document.getElementById('tabSubmitBtn').classList.add('active');
+        document.getElementById('tabHistoryBtn').classList.remove('active');
+      } else {
+        document.getElementById('sectionSubmit').classList.add('hidden');
+        document.getElementById('sectionHistory').classList.remove('hidden');
+        document.getElementById('tabHistoryBtn').classList.add('active');
+        document.getElementById('tabSubmitBtn').classList.remove('active');
+        loadStaffHistory();
+      }
+    };
+
+    document.getElementById('addRowBtn').addEventListener('click', function() { addClaimRow(); });
+
+    window.clearZipFile = function() { document.getElementById('zipFile').value = ""; };
+    window.clearItemFile = function(inputId) { document.getElementById(inputId).value = ""; };
+    window.clearItemBase64 = function(inputId) { document.getElementById(inputId).value = ""; };
+
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function addClaimRow() {
+      const container = document.getElementById('itemsContainer');
+      const rowCount = container.getElementsByClassName('claim-item-row').length;
+
+      if (rowCount >= 10) {
+        alert("Maximum limit of 10 items reached.");
+        return;
+      }
+
+      const uniqueId = Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      const rowId = 'row_' + uniqueId;
+      const fileInputId = 'file_' + uniqueId;
+      const base64InputId = 'base64_' + uniqueId;
+
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'claim-item-row';
+      rowDiv.id = rowId;
+
+      rowDiv.innerHTML = `
+        ${rowCount > 0 ? `<button type="button" class="remove-row-btn" data-rowid="${rowId}">Remove Item</button>` : ''}
+        <div style="clear: both;"></div>
+        <div class="form-group">
+          <label>Category:</label>
+          <select class="item-category" required>
+            <option value="">Select Category</option>
+            <option value="Meals">Meals</option>
+            <option value="Travel & Accommodation">Travel & Accommodation</option>
+            <option value="Office Supplies">Office Supplies</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Vendor / Seller:</label>
+          <input type="text" class="item-vendor" placeholder="e.g. Starbucks, Shell, Grab" required>
+        </div>
+        <div class="form-group">
+          <label>Item / Description:</label>
+          <input type="text" class="item-desc" placeholder="e.g. Client Coffee, Petrol" required>
+        </div>
+        <div class="form-group">
+          <label>Amount (RM):</label>
+          <input type="number" step="0.01" class="item-amount" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label>Standard Receipt File (Optional, Max 1MB):</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="${fileInputId}" class="item-receipt" accept="image/*,.pdf">
+            <button type="button" class="clear-file-btn" onclick="clearItemFile('${fileInputId}')">Clear File</button>
+          </div>
+        </div>
+        <div class="form-group" style="background: #fffaf0; padding: 10px; border: 1px dashed #f0ad4e; border-radius: 4px;">
+          <label style="color: #f0ad4e; font-size: 13px;">Alternative Base64 Small Receipt (Optional, &lt; 500KB):</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="${base64InputId}" class="item-base64-receipt" accept="image/*,.pdf">
+            <button type="button" class="clear-file-btn" onclick="clearItemBase64('${base64InputId}')">Clear File</button>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(rowDiv);
+      toggleAddButtonState();
+
+      const removeBtn = rowDiv.querySelector('.remove-row-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          rowDiv.remove();
+          toggleAddButtonState();
+        });
+      }
+    }
+
+    function toggleAddButtonState() {
+      const container = document.getElementById('itemsContainer');
+      const rowCount = container.getElementsByClassName('claim-item-row').length;
+      const addBtn = document.getElementById('addRowBtn');
+      if (rowCount >= 10) {
+        addBtn.disabled = true;
+        addBtn.innerText = "Max 10 items reached";
+      } else {
+        addBtn.disabled = false;
+        addBtn.innerText = "+ Add Item (Max 10)";
+      }
+    }
+
+    document.getElementById('expenseForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const msg = document.getElementById('statusMsg');
+      const zipFile = document.getElementById('zipFile').files[0];
+
+      if (zipFile && zipFile.size > 1048576) {
+        alert("ZIP file size exceeds 1MB limit.");
+        return;
+      }
+
+      const rowElements = document.getElementsByClassName('claim-item-row');
+      const itemsList = [];
+      let totalClaimAmount = 0;
+
+      for (let row of rowElements) {
+        const category = row.querySelector('.item-category').value;
+        const vendor = row.querySelector('.item-vendor').value.trim();
+        const item = row.querySelector('.item-desc').value.trim();
+        const amount = parseFloat(row.querySelector('.item-amount').value);
+        const receiptFile = row.querySelector('.item-receipt').files[0];
+        const base64File = row.querySelector('.item-base64-receipt').files[0];
+
+        if (receiptFile && receiptFile.size > 1048576) {
+          alert(`Standard receipt file for item "${item}" exceeds 1MB limit.`);
+          return;
+        }
+
+        itemsList.push({ category, vendor, item, amount, receiptFileObject: receiptFile, base64FileObject: base64File });
+        totalClaimAmount += amount;
+      }
+
+      btn.disabled = true;
+      msg.style.color = "#333";
+      msg.innerText = "Processing claim submission...";
+
+      try {
+        let zipFileUrl = "";
+        if (zipFile) {
+          const zipRef = ref(storage, 'receipts/zip_' + Date.now() + '_' + zipFile.name);
+          const zipSnapshot = await uploadBytes(zipRef, zipFile);
+          zipFileUrl = await getDownloadURL(zipSnapshot.ref);
+        }
+
+        const finalizedItemsList = [];
+        for (let i = 0; i < itemsList.length; i++) {
+          let itemReceiptUrl = "No receipt attached";
+          let itemBase64Data = "No Base64 attached";
+          const curr = itemsList[i];
+          
+          if (curr.receiptFileObject) {
+            const itemRef = ref(storage, 'receipts/item_' + Date.now() + '_' + curr.receiptFileObject.name);
+            const itemSnapshot = await uploadBytes(itemRef, curr.receiptFileObject);
+            itemReceiptUrl = await getDownloadURL(itemSnapshot.ref);
+          }
+          if (curr.base64FileObject) {
+            itemBase64Data = await fileToDataURL(curr.base64FileObject);
+          }
+
+          finalizedItemsList.push({
+            category: curr.category,
+            vendor: curr.vendor,
+            item: curr.item,
+            amount: curr.amount,
+            status: "Pending",
+            remark: "",
+            receiptUrl: itemReceiptUrl,
+            receiptData: itemBase64Data
+          });
+        }
+
+        await addDoc(collection(db, "claims"), {
+          email: currentUserEmail,
+          items: finalizedItemsList,
+          totalAmount: totalClaimAmount,
+          zipReceiptUrl: zipFileUrl || "No ZIP attached",
+          timestamp: serverTimestamp()
+        });
+
+        msg.style.color = "green";
+        msg.innerText = "Success! Claim submitted successfully.";
+        document.getElementById('expenseForm').reset();
+        document.getElementById('itemsContainer').innerHTML = "";
+        addClaimRow();
+      } catch (error) {
+        console.error(error);
+        msg.style.color = "red";
+        msg.innerText = "Error: " + error.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function loadStaffHistory() {
+      const container = document.getElementById('historyContainer');
+      container.innerHTML = "Fetching your history...";
+
+      try {
+        const q = query(collection(db, "claims"), where("email", "==", currentUserEmail));
+        const snapshot = await getDocs(q);
+        myClaimsCache = [];
+
+        snapshot.forEach((d) => {
+          const claim = d.data();
+          claim.id = d.id;
+          myClaimsCache.push(claim);
+        });
+
+        if (myClaimsCache.length === 0) {
+          container.innerHTML = "<p>No claims submitted yet.</p>";
+          return;
+        }
+
+        let html = "";
+        myClaimsCache.forEach((claim) => {
+          const dateStr = claim.timestamp && claim.timestamp.seconds ? new Date(claim.timestamp.seconds * 1000).toLocaleString() : "Recent";
+          
+          html += `
+            <div class="history-card" id="claim_card_${claim.id}">
+              <div style="margin-bottom:10px; border-bottom:1px solid #ddd; padding-bottom:5px; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong>Submitted:</strong> ${dateStr} | <strong>Total Amount:</strong> RM <span id="claim_total_${claim.id}">${claim.totalAmount.toFixed(2)}</span>
+                </div>
+                <div>
+                  ${claim.items.every(item => (item.status || "Pending") === "Pending") ? 
+                    `<button type="button" class="btn" style="background:#d9534f; padding:4px 8px; font-size:11px; width:auto;" onclick="deleteEntireClaim('${claim.id}')">Delete Entire Claim</button>` : ''}
+                </div>
+              </div>
+              <div>
+          `;
+
+          if (claim.items && claim.items.length > 0) {
+            claim.items.forEach((item, iIndex) => {
+              const status = item.status || "Pending";
+              const isPending = status === "Pending";
+
+              html += `
+                <div style="background:#fff; padding:10px; border:1px solid #eee; margin-bottom:8px; border-radius:4px;" id="hist_row_${claim.id}_${iIndex}">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <strong>[${item.category}]</strong> ${item.vendor} - ${item.item}
+                      <br><small>Amount: RM ${item.amount.toFixed(2)} | Status: <span class="${status === 'Approved' ? 'approved-badge' : status === 'Rejected' ? 'rejected-badge' : 'pending-badge'}">${status.toUpperCase()}</span></small>
+                      ${item.remark ? `<br><small style="color:red;"><strong>Rejection Remark:</strong> ${item.remark}</small>` : ''}
+                    </div>
+                    <div>
+                      ${isPending ? `
+                        <button type="button" class="btn" style="padding:4px 8px; font-size:12px; width:auto;" onclick="enableStaffEdit('${claim.id}', ${iIndex})">Edit</button>
+                        <button type="button" class="btn" style="background:#d9534f; padding:4px 8px; font-size:12px; width:auto; margin-left:4px;" onclick="deleteClaimItem('${claim.id}', ${iIndex})">Delete</button>
+                      ` : '<span style="font-size:11px; color:#888; font-weight:bold;">LOCKED</span>'}
+                    </div>
+                  </div>
+                  
+                  <div id="edit_box_${claim.id}_${iIndex}" class="hidden" style="margin-top:10px; padding:10px; background:#f4f7f6; border-radius:4px;">
+                    <div class="form-group" style="margin-bottom:8px;">
+                      <label style="font-size:12px;">Vendor:</label>
+                      <input type="text" id="edit_vendor_${claim.id}_${iIndex}" value="${item.vendor}" style="padding:6px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:8px;">
+                      <label style="font-size:12px;">Description:</label>
+                      <input type="text" id="edit_desc_${claim.id}_${iIndex}" value="${item.item}" style="padding:6px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:8px;">
+                      <label style="font-size:12px;">Amount (RM):</label>
+                      <input type="number" step="0.01" id="edit_amount_${claim.id}_${iIndex}" value="${item.amount}" style="padding:6px;">
+                    </div>
+                    <button type="button" class="btn" style="background:#5cb85c; padding:6px 12px; font-size:12px; width:auto;" onclick="saveStaffEdit('${claim.id}', ${iIndex})">Save Changes</button>
+                    <button type="button" class="btn" style="background:#888; padding:6px 12px; font-size:12px; width:auto; margin-left:5px;" onclick="cancelStaffEdit('${claim.id}', ${iIndex})">Cancel</button>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          html += `</div></div>`;
+        });
+
+        container.innerHTML = html;
+      } catch (error) {
+        console.error(error);
+        container.innerHTML = "<p style='color:red;'>Error loading history.</p>";
+      }
+    }
+
+    window.enableStaffEdit = function(claimId, itemIndex) {
+      document.getElementById(`edit_box_${claimId}_${itemIndex}`).classList.remove('hidden');
+    };
+
+    window.cancelStaffEdit = function(claimId, itemIndex) {
+      document.getElementById(`edit_box_${claimId}_${itemIndex}`).classList.add('hidden');
+    };
+
+    window.saveStaffEdit = async function(claimId, itemIndex) {
+      const claimObj = myClaimsCache.find(c => c.id === claimId);
+      if (!claimObj) return;
+
+      const newVendor = document.getElementById(`edit_vendor_${claimId}_${itemIndex}`).value.trim();
+      const newDesc = document.getElementById(`edit_desc_${claimId}_${itemIndex}`).value.trim();
+      const newAmount = parseFloat(document.getElementById(`edit_amount_${claimId}_${itemIndex}`).value);
+
+      if (!newVendor || !newDesc || isNaN(newAmount) || newAmount <= 0) {
+        alert("Please fill in valid details.");
+        return;
+      }
+
+      claimObj.items[itemIndex].vendor = newVendor;
+      claimObj.items[itemIndex].item = newDesc;
+      claimObj.items[itemIndex].amount = newAmount;
+
+      let newTotal = 0;
+      claimObj.items.forEach(it => newTotal += it.amount);
+      claimObj.totalAmount = newTotal;
+
+      try {
+        const docRef = doc(db, "claims", claimId);
+        await updateDoc(docRef, { items: claimObj.items, totalAmount: claimObj.totalAmount });
+        alert("Item updated successfully!");
+        loadStaffHistory();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to update item: " + error.message);
+      }
+    };
+
+    window.deleteEntireClaim = async function(claimId) {
+      if (!confirm("Are you sure you want to delete this entire pending claim?")) return;
+
+      try {
+        await deleteDoc(doc(db, "claims", claimId));
+        alert("Claim deleted successfully.");
+        loadStaffHistory();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to delete claim: " + error.message);
+      }
+    };
+
+    window.deleteClaimItem = async function(claimId, itemIndex) {
+      const claimObj = myClaimsCache.find(c => c.id === claimId);
+      if (!claimObj) return;
+
+      if (claimObj.items.length <= 1) {
+        alert("This claim only has 1 item left. Please use 'Delete Entire Claim' instead.");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to delete this item?")) return;
+
+      claimObj.items.splice(itemIndex, 1);
+
+      let newTotal = 0;
+      claimObj.items.forEach(it => newTotal += it.amount);
+      claimObj.totalAmount = newTotal;
+
+      try {
+        const docRef = doc(db, "claims", claimId);
+        await updateDoc(docRef, { items: claimObj.items, totalAmount: claimObj.totalAmount });
+        alert("Item deleted successfully.");
+        loadStaffHistory();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to delete item: " + error.message);
+      }
+    };
+  </script>
+</body>
+</html>
