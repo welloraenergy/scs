@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Claim System - Manager Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; background-color: #f4f7f6; }
+    .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h2, h3 { margin-top: 0; color: #333; border-bottom: 2px solid #008CBA; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #555; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .btn { background-color: #008CBA; color: white; border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; width: 100%; }
+    .btn:hover { background-color: #007399; }
+    .print-btn { background-color: #5cb85c; }
+    .print-btn:hover { background-color: #4cae4c; }
+    .excel-btn { background-color: #f0ad4e; margin-top: 8px; }
+    .excel-btn:hover { background-color: #ec971f; }
+    
+    #managerLoginCard { max-width: 600px; margin: 10px auto; }
+    
+    .filter-container { display: flex; flex-direction: column; gap: 15px; background: #f9f9f9; padding: 15px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ddd; }
+    
+    .summary-box { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .metric { background: #eef6f9; padding: 12px; border-radius: 6px; border: 1px solid #bce8f1; flex: 1; min-width: 130px; text-align: center; }
+    .metric h4 { margin: 0 0 5px 0; color: #555; font-size: 12px; }
+    .metric p { margin: 0; font-size: 16px; font-weight: bold; color: #008CBA; }
+    
+    .claim-card { border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 15px; background: #fafafa; }
+    .item-row-mgr { background: #fff; padding: 12px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; }
+    .readonly-badge { background: #d9534f; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; display: inline-block; }
+    .approved-badge { background: #5cb85c; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; display: inline-block; }
+    .pending-badge { background: #f0ad4e; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; display: inline-block; }
+
+    .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+    .breakdown-table th, .breakdown-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+    .breakdown-table th { background-color: #008CBA; color: white; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #managerDashboardCard, #managerDashboardCard * { visibility: visible; }
+      #managerDashboardCard { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; }
+      .btn, button, .filter-container { display: none !important; }
+    }
+    .hidden { display: none; }
+    .logout-bar { text-align: right; margin-bottom: 10px; }
+    .logout-bar button { background: #d9534f; width: auto; padding: 5px 15px; }
+  </style>
+</head>
+<body>
+
+  <!-- MANAGER LOGIN SECTION -->
+  <div class="card" id="managerLoginCard">
+    <h2>Manager Login</h2>
+    <form id="managerLoginForm" onsubmit="event.preventDefault(); loginManager();">
+      <div class="form-group">
+        <label>Manager Email:</label>
+        <input type="email" id="mgrEmail" placeholder="manager@company.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password:</label>
+        <input type="password" id="mgrPassword" placeholder="Password" required>
+      </div>
+      <button type="submit" class="btn" id="mgrLoginBtn">Login</button>
+      <p id="mgrMsg" style="text-align:center; font-weight:bold; margin-top:10px;"></p>
+    </form>
+  </div>
+
+  <!-- MANAGER DASHBOARD SECTION -->
+  <div class="card hidden" id="managerDashboardCard">
+    <div class="logout-bar">
+      <span id="loggedInMgrDisplay" style="font-weight:bold; margin-right:15px;"></span>
+      <button type="button" class="btn" onclick="managerLogout()">Logout</button>
+    </div>
+    <h2>Manager Dashboard</h2>
+
+    <div class="filter-container">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Filter Staff:</label>
+        <select id="filterStaff" onchange="filterClaims()">
+          <option value="ALL">All Staff</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Group View By:</label>
+        <select id="filterViewMode" onchange="filterClaims()">
+          <option value="claims">Standard Claims List</option>
+          <option value="category">View By Category</option>
+          <option value="staff">View By Staff</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Start Date (Period):</label>
+        <input type="date" id="filterStart" onchange="filterClaims()">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>End Date (Period):</label>
+        <input type="date" id="filterEnd" onchange="filterClaims()">
+      </div>
+      <div style="margin-top:5px; display: flex; gap: 10px;">
+        <button type="button" class="btn print-btn" onclick="window.print()" style="flex: 1;">Print / Save PDF</button>
+        <button type="button" class="btn excel-btn" onclick="exportToExcel()" style="flex: 1;">Export to Excel</button>
+      </div>
+    </div>
+
+    <!-- Summary Metrics Box -->
+    <div class="summary-box">
+      <div class="metric">
+        <h4>Total Claims</h4>
+        <p id="sumTotalClaims">RM 0.00</p>
+      </div>
+      <div class="metric">
+        <h4>Approved (Claimed)</h4>
+        <p id="sumTotalApproved" style="color:#5cb85c;">RM 0.00</p>
+      </div>
+      <div class="metric">
+        <h4>Pending (Unclaimed)</h4>
+        <p id="sumTotalPending" style="color:#f0ad4e;">RM 0.00</p>
+      </div>
+      <div class="metric">
+        <h4>Rejected</h4>
+        <p id="sumTotalRejected" style="color:#d9534f;">RM 0.00</p>
+      </div>
+    </div>
+
+    <div id="printableArea">
+      <div id="claimsContainer">Loading claims...</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD_adZXBXAXC5ujuKOqAYCnJxSYBMXXXIw",
+      authDomain: "staff-claim-system.firebaseapp.com",
+      projectId: "staff-claim-system",
+      storageBucket: "staff-claim-system.firebasestorage.app",
+      messagingSenderId: "270565705554",
+      appId: "1:270565705554:web:819361bd91304d35a59c8b",
+      measurementId: "G-HZ4MVJM549"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let allClaimsData = [];
+    let filteredClaimsCache = [];
+
+    window.loginManager = async function() {
+      const email = document.getElementById('mgrEmail').value.trim().toLowerCase();
+      const password = document.getElementById('mgrPassword').value;
+      const msg = document.getElementById('mgrMsg');
+      const btn = document.getElementById('mgrLoginBtn');
+
+      btn.disabled = true;
+      msg.style.color = "#333";
+      msg.innerText = "Checking credentials...";
+
+      try {
+        const q = query(collection(db, "users"));
+        const snapshot = await getDocs(q);
+        let foundManager = false;
+
+        snapshot.forEach((d) => {
+          const data = d.data();
+          if (data.email === email && data.password === password && data.role === "manager") {
+            foundManager = true;
+          }
+        });
+
+        if (foundManager) {
+          document.getElementById('loggedInMgrDisplay').innerText = email;
+          document.getElementById('managerLoginCard').classList.add('hidden');
+          document.getElementById('managerDashboardCard').classList.remove('hidden');
+          loadAllClaims();
+        } else {
+          msg.style.color = "red";
+          msg.innerText = "Invalid credentials or account is not a manager.";
+        }
+      } catch (error) {
+        console.error(error);
+        msg.style.color = "red";
+        msg.innerText = "Error: " + error.message;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.managerLogout = function() {
+      document.getElementById('managerDashboardCard').classList.add('hidden');
+      document.getElementById('managerLoginCard').classList.remove('hidden');
+      document.getElementById('managerLoginForm').reset();
+    };
+
+    async function loadAllClaims() {
+      const container = document.getElementById('claimsContainer');
+      container.innerHTML = "Fetching claims from database...";
+
+      try {
+        const q = query(collection(db, "claims"), orderBy("timestamp", "desc"));
+        const snapshot = await getDocs(q);
+        allClaimsData = [];
+
+        const staffSet = new Set();
+        snapshot.forEach((d) => {
+          const claim = d.data();
+          claim.id = d.id;
+          allClaimsData.push(claim);
+          if (claim.email) staffSet.add(claim.email);
+        });
+
+        const staffSelect = document.getElementById('filterStaff');
+        staffSelect.innerHTML = '<option value="ALL">All Staff</option>';
+        staffSet.forEach(email => {
+          staffSelect.innerHTML += `<option value="${email}">${email}</option>`;
+        });
+
+        filterClaims();
+      } catch (error) {
+        console.error(error);
+        container.innerHTML = "<p style='color:red;'>Error loading claims: " + error.message + "</p>";
+      }
+    }
+
+    window.filterClaims = function() {
+      const staffFilter = document.getElementById('filterStaff').value;
+      const viewMode = document.getElementById('filterViewMode').value;
+      const startFilter = document.getElementById('filterStart').value;
+      const endFilter = document.getElementById('filterEnd').value;
+
+      filteredClaimsCache = allClaimsData.filter(claim => {
+        if (staffFilter !== "ALL" && claim.email !== staffFilter) return false;
+        
+        if (claim.timestamp && claim.timestamp.seconds) {
+          const claimDate = new Date(claim.timestamp.seconds * 1000).toISOString().split('T')[0];
+          if (startFilter && claimDate < startFilter) return false;
+          if (endFilter && claimDate > endFilter) return false;
+        }
+        return true;
+      });
+
+      updateMetrics(filteredClaimsCache);
+
+      if (viewMode === "category") {
+        renderCategoryView(filteredClaimsCache);
+      } else if (viewMode === "staff") {
+        renderStaffView(filteredClaimsCache);
+      } else {
+        renderClaimsList(filteredClaimsCache);
+      }
+    }
+
+    function renderClaimsList(claims) {
+      const container = document.getElementById('claimsContainer');
+      if (claims.length === 0) {
+        container.innerHTML = "<p>No claims found for the selected period or filter.</p>";
+        return;
+      }
+
+      let html = "<h3>Submitted Claims List</h3>";
+      claims.forEach((claim) => {
+        const dateStr = claim.timestamp && claim.timestamp.seconds ? new Date(claim.timestamp.seconds * 1000).toLocaleString() : "Recent";
+        
+        html += `
+          <div class="claim-card">
+            <div style="margin-bottom:10px; border-bottom:1px solid #ddd; padding-bottom:5px; font-size:13px;">
+              <strong>Staff:</strong> ${claim.email} <br>
+              <strong>Submitted:</strong> ${dateStr} <br>
+              <strong>ZIP Bundle:</strong> ${claim.zipReceiptUrl !== "No ZIP attached" ? `<a href="${claim.zipReceiptUrl}" target="_blank">Download ZIP File</a>` : 'None'}
+            </div>
+            <div>
+        `;
+
+        if (claim.items && claim.items.length > 0) {
+          claim.items.forEach((item, iIndex) => {
+            const status = item.status || "Pending";
+            const isReadonly = status === "Approved" || status === "Rejected";
+
+            let fileLinksHTML = 'None';
+            const links = [];
+            if (item.receiptUrl && item.receiptUrl !== "No receipt attached") {
+              links.push(`<a href="${item.receiptUrl}" target="_blank">Standard File</a>`);
+            }
+            if (item.receiptData && item.receiptData !== "No Base64 attached") {
+              links.push(`<a href="${item.receiptData}" target="_blank" download="receipt_${iIndex}">Base64 File</a>`);
+            }
+            if (links.length > 0) {
+              fileLinksHTML = links.join(' | ');
+            }
+
+            html += `
+              <div class="item-row-mgr">
+                <div style="margin-bottom: 8px;">
+                  <strong>[${item.category || 'General'}]</strong> ${item.vendor} - ${item.item}
+                  <br><small>Amount: <strong>RM ${item.amount.toFixed(2)}</strong> | Files: ${fileLinksHTML}</small>
+                  ${item.remark ? `<br><small style="color:red;"><strong>Rejection Remark:</strong> ${item.remark}</small>` : ''}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                  <span>Status: <strong class="${status === 'Approved' ? 'approved-badge' : status === 'Rejected' ? 'readonly-badge' : 'pending-badge'}">${status.toUpperCase()}</strong></span>
+            `;
+
+            if (isReadonly) {
+              html += `<span class="${status === 'Approved' ? 'approved-badge' : 'readonly-badge'}">LOCKED</span>`;
+            } else {
+              html += `
+                <div>
+                  <button type="button" class="btn" style="background:#5cb85c; padding:6px 12px; font-size:12px; width:auto; display:inline-block;" onclick="updateItemStatus('${claim.id}', ${iIndex}, 'Approved')">Approve</button>
+                  <button type="button" class="btn" style="background:#d9534f; padding:6px 12px; font-size:12px; width:auto; display:inline-block; margin-left:5px;" onclick="promptReject('${claim.id}', ${iIndex})">Reject</button>
+                </div>
+              `;
+            }
+
+            html += `
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        html += `</div></div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderCategoryView(claims) {
+      const container = document.getElementById('claimsContainer');
+      const categoryMap = {};
+
+      claims.forEach(claim => {
+        if (claim.items) {
+          claim.items.forEach(item => {
+            const cat = item.category || "Uncategorized";
+            if (!categoryMap[cat]) {
+              categoryMap[cat] = { total: 0, approved: 0, pending: 0, rejected: 0, itemsCount: 0 };
+            }
+            categoryMap[cat].itemsCount++;
+            categoryMap[cat].total += item.amount;
+            if (item.status === "Approved") categoryMap[cat].approved += item.amount;
+            else if (item.status === "Rejected") categoryMap[cat].rejected += item.amount;
+            else categoryMap[cat].pending += item.amount;
+          });
+        }
+      });
+
+      let html = `<h3>Breakdown By Category</h3>`;
+      if (Object.keys(categoryMap).length === 0) {
+        container.innerHTML = "<p>No claims found.</p>";
+        return;
+      }
+
+      html += `
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Items Count</th>
+              <th>Total Claimed</th>
+              <th>Approved (Claimed)</th>
+              <th>Pending (Unclaimed)</th>
+              <th>Rejected</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const [cat, data] of Object.entries(categoryMap)) {
+        html += `
+          <tr>
+            <td><strong>${cat}</strong></td>
+            <td>${data.itemsCount}</td>
+            <td>RM ${data.total.toFixed(2)}</td>
+            <td style="color:#5cb85c;">RM ${data.approved.toFixed(2)}</td>
+            <td style="color:#f0ad4e;">RM ${data.pending.toFixed(2)}</td>
+            <td style="color:#d9534f;">RM ${data.rejected.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    function renderStaffView(claims) {
+      const container = document.getElementById('claimsContainer');
+      const staffMap = {};
+
+      claims.forEach(claim => {
+        const staffEmail = claim.email || "Unknown Staff";
+        if (!staffMap[staffEmail]) {
+          staffMap[staffEmail] = { total: 0, approved: 0, pending: 0, rejected: 0, itemsCount: 0 };
+        }
+        if (claim.items) {
+          claim.items.forEach(item => {
+            staffMap[staffEmail].itemsCount++;
+            staffMap[staffEmail].total += item.amount;
+            if (item.status === "Approved") staffMap[staffEmail].approved += item.amount;
+            else if (item.status === "Rejected") staffMap[staffEmail].rejected += item.amount;
+            else staffMap[staffEmail].pending += item.amount;
+          });
+        }
+      });
+
+      let html = `<h3>Breakdown By Staff</h3>`;
+      if (Object.keys(staffMap).length === 0) {
+        container.innerHTML = "<p>No claims found.</p>";
+        return;
+      }
+
+      html += `
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th>Staff Email</th>
+              <th>Total Items</th>
+              <th>Total Claimed</th>
+              <th>Approved (Claimed)</th>
+              <th>Pending (Unclaimed)</th>
+              <th>Rejected</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const [email, data] of Object.entries(staffMap)) {
+        html += `
+          <tr>
+            <td><strong>${email}</strong></td>
+            <td>${data.itemsCount}</td>
+            <td>RM ${data.total.toFixed(2)}</td>
+            <td style="color:#5cb85c;">RM ${data.approved.toFixed(2)}</td>
+            <td style="color:#f0ad4e;">RM ${data.pending.toFixed(2)}</td>
+            <td style="color:#d9534f;">RM ${data.rejected.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    window.updateItemStatus = async function(claimId, itemIndex, newStatus, remarkText = "") {
+      const claimObj = allClaimsData.find(c => c.id === claimId);
+      if (!claimObj) return;
+
+      claimObj.items[itemIndex].status = newStatus;
+      if (remarkText) {
+        claimObj.items[itemIndex].remark = remarkText;
+      }
+
+      try {
+        const docRef = doc(db, "claims", claimId);
+        await updateDoc(docRef, { items: claimObj.items });
+        filterClaims();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to update status: " + error.message);
+      }
+    };
+
+    window.promptReject = function(claimId, itemIndex) {
+      const reason = prompt("Enter reason/remark for rejection:");
+      if (reason !== null) {
+        updateItemStatus(claimId, itemIndex, "Rejected", reason.trim());
+      }
+    };
+
+    function updateMetrics(claims) {
+      let totalClaims = 0;
+      let totalApproved = 0;
+      let totalPending = 0;
+      let totalRejected = 0;
+
+      claims.forEach(claim => {
+        if (claim.items) {
+          claim.items.forEach(item => {
+            totalClaims += item.amount;
+            if (item.status === "Approved") {
+              totalApproved += item.amount;
+            } else if (item.status === "Rejected") {
+              totalRejected += item.amount;
+            } else {
+              totalPending += item.amount;
+            }
+          });
+        }
+      });
+
+      document.getElementById('sumTotalClaims').innerText = "RM " + totalClaims.toFixed(2);
+      document.getElementById('sumTotalApproved').innerText = "RM " + totalApproved.toFixed(2);
+      document.getElementById('sumTotalPending').innerText = "RM " + totalPending.toFixed(2);
+      document.getElementById('sumTotalRejected').innerText = "RM " + totalRejected.toFixed(2);
+    }
+
+    window.exportToExcel = function() {
+      if (!filteredClaimsCache || filteredClaimsCache.length === 0) {
+        alert("No data available to export.");
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Staff Email,Submission Date,Category,Vendor,Item Description,Amount (RM),Status,Rejection Remark\r\n";
+
+      filteredClaimsCache.forEach(claim => {
+        const dateStr = claim.timestamp && claim.timestamp.seconds ? new Date(claim.timestamp.seconds * 1000).toLocaleDateString() : "Recent";
+        if (claim.items) {
+          claim.items.forEach(item => {
+            const staff = `"${claim.email || ''}"`;
+            const date = `"${dateStr}"`;
+            const category = `"${item.category || 'General'}"`;
+            const vendor = `"${(item.vendor || '').replace(/"/g, '""')}"`;
+            const itemName = `"${(item.item || '').replace(/"/g, '""')}"`;
+            const amount = item.amount.toFixed(2);
+            const status = `"${item.status || 'Pending'}"`;
+            const remark = `"${(item.remark || '').replace(/"/g, '""')}"`;
+
+            csvContent += [staff, date, category, vendor, itemName, amount, status, remark].join(",") + "\r\n";
+          });
+        }
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "staff_claims_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+  </script>
+</body>
+</html>
