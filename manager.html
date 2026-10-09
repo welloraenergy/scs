@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wellora Energy | SCS Manager</title>
-  <meta name="theme-color" content="#008CBA">
+  <meta name="theme-color" content="#000000">
   <meta name="application-name" content="Wellora SCS">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Wellora SCS">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
@@ -51,6 +51,89 @@
     .breakdown-table th, .breakdown-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
     .breakdown-table th { background-color: #008CBA; color: white; }
 
+
+    /* ==========================================================
+       WELLORA SCS MANAGER THEME
+       Black base · gold neutral/default actions
+       Green positive/confirm · red caution/cancel/destructive
+       ========================================================== */
+    :root { --wellora-gold:#d3af36; --wellora-gold-hover:#e0c15a; --wellora-green:#16a34a; --wellora-red:#dc2626; --wellora-border:#333333; }
+    html, body { background:#000000; color:#ffffff; }
+    .card { background:#000000; color:#ffffff; border:1px solid #333333; box-shadow:0 14px 38px rgba(0,0,0,.45); }
+    .brand-name { color:#ffffff; }
+    .brand-subtitle { color:var(--wellora-gold); }
+    h2, h3 { color:#ffffff; border-bottom-color:var(--wellora-gold); }
+    .form-group label { color:#ffffff; }
+    .form-group input, .form-group select {
+      background:#000000;
+      color:#ffffff;
+      border-color:#4b5563;
+    }
+    .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--wellora-gold); }
+    .form-group input::placeholder { color:rgba(255,255,255,.65); }
+    .filter-container, .claim-card, .item-row-mgr, .metric {
+      background:#090909;
+      border-color:#333333;
+      color:#ffffff;
+    }
+    .metric h4 { color:#ffffff; }
+    .metric p { color:var(--wellora-gold); }
+    .breakdown-table th { background:var(--wellora-gold); color:#000000; }
+    .breakdown-table th, .breakdown-table td { border-color:#333333; }
+    .btn { background:var(--wellora-gold); color:#000000; }
+    .btn:hover { background:var(--wellora-gold-hover); }
+    .print-btn { background:var(--wellora-green); color:#ffffff; }
+    .print-btn:hover { filter:brightness(1.08); }
+    .excel-btn { background:var(--wellora-gold); color:#000000; }
+    .excel-btn:hover { background:var(--wellora-gold-hover); }
+    .logout-bar button { background:var(--wellora-red); color:#ffffff; }
+    .approved-badge { background:var(--wellora-green); color:#ffffff; }
+    .pending-badge { background:var(--wellora-gold); color:#000000; }
+    .readonly-badge { background:var(--wellora-red); color:#ffffff; }
+
+    /* IMS-style manager login */
+    #managerLoginCard {
+      max-width:448px;
+      margin:clamp(30px,10vh,90px) auto;
+      padding:24px 28px 28px;
+      border-radius:16px;
+    }
+    #managerLoginCard .brand {
+      flex-direction:column;
+      justify-content:center;
+      text-align:center;
+      gap:0;
+      margin-bottom:20px;
+    }
+    #managerLoginCard .brand img {
+      width:112px;
+      height:112px;
+      border-radius:0;
+      margin-bottom:10px;
+    }
+    #managerLoginCard .brand-name {
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-.02em;
+    }
+    #managerLoginCard .brand-subtitle {
+      margin-top:3px;
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.18em;
+    }
+    #managerLoginCard h2 {
+      border:0;
+      text-align:center;
+      font-size:14px;
+      color:rgba(255,255,255,.82);
+      margin:0 0 20px;
+      padding:0;
+    }
+    #managerLoginCard .form-group input { padding:11px 12px; border-radius:8px; }
+    #managerLoginCard #mgrLoginBtn { padding:11px 14px; border-radius:8px; font-size:14px; }
+
     @media print {
       body * { visibility: hidden; }
       #managerDashboardCard, #managerDashboardCard * { visibility: visible; }
@@ -69,11 +152,11 @@
     <div class="brand">
       <img src="./icon-192.png" alt="Wellora Energy logo">
       <div class="brand-text">
-        <div class="brand-name">Wellora Energy</div>
-        <div class="brand-subtitle">Staff Claim System</div>
+        <div class="brand-name">SCS</div>
+        <div class="brand-subtitle">Portal Login</div>
       </div>
     </div>
-    <h2>Manager Login</h2>
+    <h2>Wellora Energy · Manager Access</h2>
     <form id="managerLoginForm" onsubmit="event.preventDefault(); loginManager();">
       <div class="form-group">
         <label>Manager Email:</label>
