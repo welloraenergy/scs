@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wellora Energy | Staff Claim System</title>
-  <meta name="theme-color" content="#008CBA">
+  <meta name="theme-color" content="#000000">
   <meta name="application-name" content="Wellora SCS">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Wellora SCS">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
@@ -53,6 +53,85 @@
     .approved-badge { background: #5cb85c; color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     .rejected-badge { background: #d9534f; color: white; padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
 
+
+    /* ==========================================================
+       WELLORA SCS THEME
+       Black base · gold neutral/default actions
+       Green positive/confirm/save · red caution/cancel/destructive
+       ========================================================== */
+    :root { --wellora-gold:#d3af36; --wellora-gold-hover:#e0c15a; --wellora-green:#16a34a; --wellora-red:#dc2626; --wellora-border:#333333; }
+    html, body { background:#000000; color:#ffffff; }
+    body { max-width:900px; }
+    .card { background:#000000; color:#ffffff; border:1px solid #333333; box-shadow:0 14px 38px rgba(0,0,0,.45); }
+    .brand-name { color:#ffffff; }
+    .brand-subtitle { color:var(--wellora-gold); }
+    h2 { color:#ffffff; border-bottom-color:var(--wellora-gold); }
+    .form-group label { color:#ffffff; }
+    .form-group input, .form-group select {
+      background:#000000;
+      color:#ffffff;
+      border-color:#4b5563;
+    }
+    .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--wellora-gold); }
+    .form-group input::placeholder { color:rgba(255,255,255,.65); }
+    .claim-item-row, .history-card { background:#090909; border-color:#333333; color:#ffffff; }
+    .nav-tab-btn { background:var(--wellora-gold); color:#000000; border:1px solid var(--wellora-gold); }
+    .nav-tab-btn.active { background:#7a5b0c; color:#ffffff; border-color:#f2d675; }
+    .nav-tab-btn:hover { background:var(--wellora-gold-hover); color:#000000; }
+    .submit-btn { background:var(--wellora-green); color:#ffffff; }
+    #loginBtn { background:var(--wellora-gold); color:#000000; }
+    #loginBtn:hover { background:var(--wellora-gold-hover); }
+    .add-row-btn { background:var(--wellora-green); color:#ffffff; }
+    .remove-row-btn, .clear-file-btn, .logout-bar button { background:var(--wellora-red); color:#ffffff; }
+    .pending-badge { background:var(--wellora-gold); color:#000000; }
+    .approved-badge { background:var(--wellora-green); color:#ffffff; }
+    .rejected-badge { background:var(--wellora-red); color:#ffffff; }
+    #msg, #statusMsg { color:#ffffff; }
+
+    /* IMS-style login presentation */
+    #loginCard {
+      max-width:448px;
+      margin:clamp(30px,10vh,90px) auto;
+      padding:24px 28px 28px;
+      border-radius:16px;
+    }
+    #loginCard .brand {
+      flex-direction:column;
+      justify-content:center;
+      text-align:center;
+      gap:0;
+      margin-bottom:20px;
+    }
+    #loginCard .brand img {
+      width:112px;
+      height:112px;
+      border-radius:0;
+      margin-bottom:10px;
+    }
+    #loginCard .brand-name {
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-.02em;
+    }
+    #loginCard .brand-subtitle {
+      margin-top:3px;
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.18em;
+    }
+    #loginCard h2 {
+      border:0;
+      text-align:center;
+      font-size:14px;
+      color:rgba(255,255,255,.82);
+      margin:0 0 20px;
+      padding:0;
+    }
+    #loginCard .form-group { margin-bottom:16px; }
+    #loginCard .form-group input { padding:11px 12px; border-radius:8px; }
+    #loginCard #loginBtn { padding:11px 14px; border-radius:8px; font-size:14px; }
+
     /* Mobile specific adjustments to stack clear button below nicely */
     @media (max-width: 600px) {
       .file-input-wrapper { flex-direction: column; align-items: stretch; }
@@ -67,11 +146,11 @@
     <div class="brand">
       <img src="./icon-192.png" alt="Wellora Energy logo">
       <div class="brand-text">
-        <div class="brand-name">Wellora Energy</div>
-        <div class="brand-subtitle">Staff Claim System</div>
+        <div class="brand-name">SCS</div>
+        <div class="brand-subtitle">Portal Login</div>
       </div>
     </div>
-    <h2>Staff Login</h2>
+    <h2>Wellora Energy · Staff Claim System</h2>
     <form id="loginForm">
       <div class="form-group">
         <label>Assigned Email:</label>
