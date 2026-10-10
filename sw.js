@@ -1,40 +1,15 @@
-const CACHE_NAME = 'wellora-scs-v1';
-const APP_SHELL = [
-  './',
-  './index.html',
-  './manager.html',
-  './manifest.webmanifest',
-  './favicon-32x32.png',
-  './apple-touch-icon.png',
-  './icon-192.png',
-  './icon-512.png'
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
+// Online-only installable app. Never cache application files or Firebase data.
+// Cache Storage cleanup does not touch Firestore, browser records, or authentication.
+const LEGACY_PREFIX = "wellora-scs-";
+self.addEventListener("install", event => event.waitUntil(self.skipWaiting()));
+self.addEventListener("activate", event => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names.filter(name => name.startsWith(LEGACY_PREFIX)).map(name => caches.delete(name)));
+    await self.clients.claim();
+  })());
 });
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    ))
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const copy = response.clone();
-        if (event.request.url.startsWith(self.location.origin)) {
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
-  );
+self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET") return;
+  event.respondWith(fetch(event.request, { cache: "no-store" }));
 });
