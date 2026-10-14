@@ -914,11 +914,13 @@
       filteredClaimsCache = allClaimsData.filter(claim => {
         if (staffFilter !== "ALL" && claim.email !== staffFilter) return false;
         
-        if (claim.timestamp && claim.timestamp.seconds) {
-          const claimDate = new Date(claim.timestamp.seconds * 1000).toISOString().split('T')[0];
-          if (startFilter && claimDate < startFilter) return false;
-          if (endFilter && claimDate > endFilter) return false;
-        }
+        const claimDate = claim.timestamp && claim.timestamp.seconds
+          ? new Date(claim.timestamp.seconds * 1000).toLocaleDateString('en-CA', {timeZone:'Asia/Kuala_Lumpur', year:'numeric', month:'2-digit', day:'2-digit'})
+          : '';
+        if ((monthFilter || startFilter || endFilter) && !claimDate) return false;
+        if (monthFilter && !claimDate.startsWith(monthFilter)) return false;
+        if (startFilter && claimDate < startFilter) return false;
+        if (endFilter && claimDate > endFilter) return false;
         return true;
       });
 
@@ -1203,8 +1205,8 @@
           item.status || 'Pending', item.remark || ''
         ]));
       });
-      const csv = '\\uFEFF' + rows.map(row=>row.map(csvCell).join(',')).join('\\r\\n');
-      const blob = new Blob([csv.replace('\\uFEFF','\uFEFF')],{type:'text/csv;charset=utf-8;'});
+      const csv = '\uFEFF' + rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const month = document.getElementById('filterMonth').value || 'all-months';
