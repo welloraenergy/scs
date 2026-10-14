@@ -375,15 +375,15 @@
         </select>
       </div>
       <div class="form-group" style="margin-bottom:0;">
-        <label>Start Date (Period):</label>
+        <label>Month:</label><input type="month" id="filterMonth" onchange="filterClaims()"><label>Start Date (optional):</label>
         <input type="date" id="filterStart" onchange="filterClaims()">
       </div>
       <div class="form-group" style="margin-bottom:0;">
-        <label>End Date (Period):</label>
+        <label>End Date (optional):</label>
         <input type="date" id="filterEnd" onchange="filterClaims()">
       </div>
       <div style="margin-top:5px; display: flex; gap: 10px;">
-        <button type="button" class="btn print-btn" onclick="window.print()" style="flex: 1;">Print / Save PDF</button>
+        <button type="button" class="btn print-btn" onclick="printClaimsReport()" style="flex: 1;">Print / Save PDF</button>
         <button type="button" class="btn excel-btn" onclick="exportToExcel()" style="flex: 1;">Export to Excel</button>
       </div>
     </div>
@@ -408,7 +408,7 @@
       </div>
     </div>
 
-    <div id="printableArea">
+    <div id="reportHeading" style="display:none;margin-bottom:14px"><h2>Wellora Energy · Staff Claims Report</h2><p id="reportScope"></p></div><div id="printableArea">
       <div id="claimsContainer">Loading claims...</div>
     </div>
   </div>
@@ -907,6 +907,7 @@
     window.filterClaims = function() {
       const staffFilter = document.getElementById('filterStaff').value;
       const viewMode = document.getElementById('filterViewMode').value;
+      const monthFilter = document.getElementById('filterMonth').value;
       const startFilter = document.getElementById('filterStart').value;
       const endFilter = document.getElementById('filterEnd').value;
 
@@ -1170,41 +1171,50 @@
       document.getElementById('sumTotalRejected').innerText = "RM " + totalRejected.toFixed(2);
     }
 
-    window.exportToExcel = function() {
-      if (!filteredClaimsCache || filteredClaimsCache.length === 0) {
-        alert("No data available to export.");
-        return;
-      }
-
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Staff Email,Submission Date,Category,Vendor,Item Description,Amount (RM),Status,Rejection Remark\r\n";
-
-      filteredClaimsCache.forEach(claim => {
-        const dateStr = claim.timestamp && claim.timestamp.seconds ? new Date(claim.timestamp.seconds * 1000).toLocaleDateString() : "Recent";
-        if (claim.items) {
-          claim.items.forEach(item => {
-            const staff = `"${claim.email || ''}"`;
-            const date = `"${dateStr}"`;
-            const category = `"${item.category || 'General'}"`;
-            const vendor = `"${(item.vendor || '').replace(/"/g, '""')}"`;
-            const itemName = `"${(item.item || '').replace(/"/g, '""')}"`;
-            const amount = item.amount.toFixed(2);
-            const status = `"${item.status || 'Pending'}"`;
-            const remark = `"${(item.remark || '').replace(/"/g, '""')}"`;
-
-            csvContent += [staff, date, category, vendor, itemName, amount, status, remark].join(",") + "\r\n";
-          });
-        }
-      });
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "staff_claims_report.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    function reportName() {
+      const staff = document.getElementById('filterStaff').value;
+      const month = document.getElementById('filterMonth').value;
+      const start = document.getElementById('filterStart').value;
+      const end = document.getElementById('filterEnd').value;
+      return [staff === 'ALL' ? 'All Staff' : staff, month || 'All Months',
+        start ? 'From ' + start : '', end ? 'To ' + end : ''].filter(Boolean).join(' · ');
+    }
+    window.printClaimsReport = function() {
+      document.getElementById('reportScope').textContent = reportName() + ' · ' + filteredClaimsCache.length + ' submissions';
+      document.getElementById('reportHeading').style.display = 'block';
+      window.print();
     };
+    window.addEventListener('afterprint', () => document.getElementById('reportHeading').style.display = 'none');
+    window.exportToExcel = function() {
+      if (!filteredClaimsCache.length) { alert('No claims match the selected filters.'); return; }
+      const csvCell = value => {
+        let str = String(value == null ? '' : value);
+        if (/^[=+@\-\t\r]/.test(str)) str = "'" + str;
+        return '"' + str.replace(/"/g, '""') + '"';
+      };
+      const rows = [['Staff Email','Submission Date','Category','Vendor','Item Description','Amount (RM)','Status','Rejection Remark']];
+      filteredClaimsCache.forEach(claim => {
+        const date = claim.timestamp && claim.timestamp.seconds
+          ? new Date(claim.timestamp.seconds * 1000).toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'})
+          : '';
+        (claim.items || []).forEach(item => rows.push([
+          claim.email || '', date, item.category || 'General', item.vendor || '',
+          item.item || '', Number(item.amount || 0).toFixed(2),
+          item.status || 'Pending', item.remark || ''
+        ]));
+      });
+      const csv = '\\uFEFF' + rows.map(row=>row.map(csvCell).join(',')).join('\\r\\n');
+      const blob = new Blob([csv.replace('\\uFEFF','\uFEFF')],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const month = document.getElementById('filterMonth').value || 'all-months';
+      const staff = document.getElementById('filterStaff').value === 'ALL' ? 'all-staff' : 'selected-staff';
+      link.href = url;
+      link.download = 'scs-claims-' + month + '-' + staff + '.csv';
+      document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+
   </script>
 <script>
     if ('serviceWorker' in navigator) {
