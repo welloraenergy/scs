@@ -388,7 +388,25 @@
         </select>
       </div>
       <div class="form-group" style="margin-bottom:0;">
-        <label>Month:</label><input type="month" id="filterMonth" onchange="filterClaims()"><label>Start Date (optional):</label>
+        <label for="filterMonth">Month</label>
+        <select id="filterMonth" onchange="filterClaims()">
+          <option value="">All Months</option>
+          <option value="01">January</option>
+          <option value="02">February</option>
+          <option value="03">March</option>
+          <option value="04">April</option>
+          <option value="05">May</option>
+          <option value="06">June</option>
+          <option value="07">July</option>
+          <option value="08">August</option>
+          <option value="09">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+        <label for="filterYear" style="margin-top:12px">Year</label>
+        <select id="filterYear" onchange="filterClaims()"><option value="">All Years</option></select>
+        <label for="filterStart" style="margin-top:12px">Start Date (optional):</label>
         <input type="date" id="filterStart" onchange="filterClaims()">
       </div>
       <div class="form-group" style="margin-bottom:0;">
@@ -953,6 +971,7 @@
       const staffFilter = document.getElementById('filterStaff').value;
       const viewMode = document.getElementById('filterViewMode').value;
       const monthFilter = document.getElementById('filterMonth').value;
+      const yearFilter = document.getElementById('filterYear').value;
       const startFilter = document.getElementById('filterStart').value;
       const endFilter = document.getElementById('filterEnd').value;
 
@@ -962,8 +981,9 @@
         const claimDate = claim.timestamp && claim.timestamp.seconds
           ? new Date(claim.timestamp.seconds * 1000).toLocaleDateString('en-CA', {timeZone:'Asia/Kuala_Lumpur', year:'numeric', month:'2-digit', day:'2-digit'})
           : '';
-        if ((monthFilter || startFilter || endFilter) && !claimDate) return false;
-        if (monthFilter && !claimDate.startsWith(monthFilter)) return false;
+        if ((monthFilter || yearFilter || startFilter || endFilter) && !claimDate) return false;
+        if (monthFilter && claimDate.slice(5,7) !== monthFilter) return false;
+        if (yearFilter && claimDate.slice(0,4) !== yearFilter) return false;
         if (startFilter && claimDate < startFilter) return false;
         if (endFilter && claimDate > endFilter) return false;
         return true;
@@ -1220,10 +1240,11 @@
 
     function reportName() {
       const staff = document.getElementById('filterStaff').value;
-      const month = document.getElementById('filterMonth').value;
+      const month = document.getElementById('filterMonth');
+      const year = document.getElementById('filterYear').value;
       const start = document.getElementById('filterStart').value;
       const end = document.getElementById('filterEnd').value;
-      return [staff === 'ALL' ? 'All Staff' : staff, month || 'All Months',
+      return [staff === 'ALL' ? 'All Staff' : staff, (month.value ? month.options[month.selectedIndex].text : 'All Months') + ' ' + (year || 'All Years'),
         start ? 'From ' + start : '', end ? 'To ' + end : ''].filter(Boolean).join(' · ');
     }
     window.printClaimsReport = function() {
@@ -1254,7 +1275,7 @@
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      const month = document.getElementById('filterMonth').value || 'all-months';
+      const month = (document.getElementById('filterYear').value || 'all-years') + '-' + (document.getElementById('filterMonth').value || 'all-months');
       const staff = document.getElementById('filterStaff').value === 'ALL' ? 'all-staff' : 'selected-staff';
       link.href = url;
       link.download = 'scs-claims-' + month + '-' + staff + '.csv';
