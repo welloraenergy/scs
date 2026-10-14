@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email is string; }
+    function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function activeUser() {
+      return signedIn() && exists(profilePath())
+        && get(profilePath()).data.get('active', false) == true
+        && get(profilePath()).data.get('email', '') == request.auth.token.email
+        && get(profilePath()).data.get('role', '') in ['staff', 'manager'];
+    }
+    function manager() { return activeUser() && get(profilePath()).data.role == 'manager'; }
+    function owner(data) { return activeUser() && data.get('email', '') == request.auth.token.email; }
+    function shape(data) {
+      return data.keys().hasOnly(['email', 'items', 'totalAmount', 'timestamp'])
+        && data.email is string && data.items is list
+        && data.items.size() > 0 && data.items.size() <= 10
+        && data.totalAmount is number && data.totalAmount >= 0;
+    }
+    function pendingItem(item) {
+      return item is map && item.get('status', '') == 'Pending'
+        && item.get('amount', 0) is number && item.get('amount', 0) > 0
+        && item.get('vendor', '') is string && item.get('item', '') is string;
+    }
+    function finalItem(item) {
+      return item is map && item.get('status', '') in ['Approved', 'Rejected'];
+    }
+    // Firestore rules cannot loop over arrays. Check all supported item positions.
+    function initialAt(data, n) {
+      return data.items.size() <= n || pendingItem(data.items[n]);
+    }
+    function preserveFinalAt(before, after, n) {
+      return before.items.size() <= n
+        || !finalItem(before.items[n])
+        || after.items.hasAny([before.items[n]]);
+    }
+    function validStaffItemAt(before, after, n) {
+      return after.items.size() <= n
+        || pendingItem(after.items[n])
+        || before.items.hasAny([after.items[n]]);
+    }
+    function validManagerItemAt(before, after, n) {
+      return before.items.size() <= n
+        || (after.items.size() > n
+          && (finalItem(before.items[n])
+            ? after.items[n] == before.items[n]
+            : (after.items[n].diff(before.items[n]).affectedKeys().hasOnly(['status', 'remark'])
+              && after.items[n].get('status', '') in ['Approved', 'Rejected', 'Pending'])));
+    }
+    function initialItems(data) {
+      return initialAt(data, 0)
+        && initialAt(data, 1)
+        && initialAt(data, 2)
+        && initialAt(data, 3)
+        && initialAt(data, 4)
+        && initialAt(data, 5)
+        && initialAt(data, 6)
+        && initialAt(data, 7)
+        && initialAt(data, 8)
+        && initialAt(data, 9);
+    }
+    function preserveFinalItems(before, after) {
+      return preserveFinalAt(before, after, 0)
+        && preserveFinalAt(before, after, 1)
+        && preserveFinalAt(before, after, 2)
+        && preserveFinalAt(before, after, 3)
+        && preserveFinalAt(before, after, 4)
+        && preserveFinalAt(before, after, 5)
+        && preserveFinalAt(before, after, 6)
+        && preserveFinalAt(before, after, 7)
+        && preserveFinalAt(before, after, 8)
+        && preserveFinalAt(before, after, 9);
+    }
+    function staffItems(before, after) {
+      return validStaffItemAt(before, after, 0)
+        && validStaffItemAt(before, after, 1)
+        && validStaffItemAt(before, after, 2)
+        && validStaffItemAt(before, after, 3)
+        && validStaffItemAt(before, after, 4)
+        && validStaffItemAt(before, after, 5)
+        && validStaffItemAt(before, after, 6)
+        && validStaffItemAt(before, after, 7)
+        && validStaffItemAt(before, after, 8)
+        && validStaffItemAt(before, after, 9);
+    }
+    function managerItems(before, after) {
+      return before.items.size() == after.items.size()
+        && validManagerItemAt(before, after, 0)
+        && validManagerItemAt(before, after, 1)
+        && validManagerItemAt(before, after, 2)
+        && validManagerItemAt(before, after, 3)
+        && validManagerItemAt(before, after, 4)
+        && validManagerItemAt(before, after, 5)
+        && validManagerItemAt(before, after, 6)
+        && validManagerItemAt(before, after, 7)
+        && validManagerItemAt(before, after, 8)
+        && validManagerItemAt(before, after, 9);
+    }
+    function unchangedIdentity() {
+      return request.resource.data.email == resource.data.email
+        && request.resource.data.timestamp == resource.data.timestamp;
+    }
+    match /users/{uid} {
+      allow get: if activeUser() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /claims/{claimId} {
+      allow get, list: if manager() || owner(resource.data);
+      allow create: if activeUser() && owner(request.resource.data)
+        && shape(request.resource.data)
+        && request.resource.data.timestamp == request.time
+        && initialItems(request.resource.data);
+      allow update: if activeUser() && unchangedIdentity()
+        && shape(request.resource.data)
+        && (
+          (manager()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items'])
+            && managerItems(resource.data, request.resource.data))
+          ||
+          (owner(resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'totalAmount'])
+            && preserveFinalItems(resource.data, request.resource.data)
+            && staffItems(resource.data, request.resource.data))
+        );
+      allow delete: if owner(resource.data) && initialItems(resource.data);
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
