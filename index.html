@@ -415,7 +415,8 @@
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD_adZXBXAXC5ujuKOqAYCnJxSYBMXXXIw",
@@ -429,6 +430,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
     let currentUserEmail = "";
     let currentUserRole = "staff";
@@ -447,62 +449,72 @@
     document.getElementById("navManageClaims").addEventListener("click",()=>openWorkspace("manage"));
     let myClaimsCache = [];
 
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-      const password = document.getElementById('loginPassword').value;
-      const msg = document.getElementById('msg');
+    function resetWorkspace() {
+      currentUserEmail = "";
+      currentUserRole = "staff";
+      roleNav.style.display = "none";
+      managerCard.classList.add("hidden");
+      claimCard.classList.add("hidden");
+      document.getElementById('loginCard').classList.remove('hidden');
+      myClaimsCache = [];
+    }
+    async function establishWorkspace(user) {
+      const profileSnap = await getDoc(doc(db,"users",user.uid));
+      const profile = profileSnap.exists() ? profileSnap.data() : null;
+      if (!profile || profile.active !== true ||
+          !['staff','manager'].includes(profile.role) ||
+          (profile.email || '').toLowerCase() !== (user.email || '').toLowerCase()) {
+        throw new Error("Account is not yet assigned an active SCS user profile. Contact your administrator.");
+      }
+      currentUserEmail = user.email.toLowerCase();
+      currentUserRole = profile.role;
+      roleNav.style.display = currentUserRole === "manager" ? "flex" : "none";
+      document.getElementById('loggedInUserDisplay').innerText = currentUserEmail;
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('loginForm').reset();
+      openWorkspace("claims");
+      switchTab('submit');
+      document.getElementById('itemsContainer').innerHTML = "";
+      addClaimRow();
+    }
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
       const btn = document.getElementById('loginBtn');
-
+      const msg = document.getElementById('msg');
       btn.disabled = true;
-      msg.style.color = "#333";
-      msg.innerText = "Verifying credentials...";
-
+      msg.textContent = "Signing in...";
       try {
-        const q = query(collection(db, "users"), where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          msg.style.color = "red";
-          msg.innerText = "Email not found in authorized user database.";
-          btn.disabled = false;
-          return;
-        }
-
-        let userDocData = null;
-        querySnapshot.forEach((doc) => { userDocData = doc.data(); });
-
-        if (userDocData.password === password) {
-          currentUserEmail = email;
-           currentUserRole = userDocData.role === "manager" ? "manager" : "staff";
-           roleNav.style.display = currentUserRole === "manager" ? "flex" : "none";
-           openWorkspace("claims");
-          document.getElementById('loggedInUserDisplay').innerText = email;
-          document.getElementById('loginCard').classList.add('hidden');
-          document.getElementById('claimCard').classList.remove('hidden');
-          document.getElementById('loginForm').reset();
-          msg.innerText = "";
-          
-          switchTab('submit');
-          document.getElementById('itemsContainer').innerHTML = "";
-          addClaimRow();
-        } else {
-          msg.style.color = "red";
-          msg.innerText = "Incorrect password.";
-        }
-      } catch (error) {
-        console.error(error);
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        const password = document.getElementById('loginPassword').value;
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        await establishWorkspace(credential.user);
+        msg.textContent = "";
+      } catch(error) {
+        await signOut(auth);
+        resetWorkspace();
         msg.style.color = "red";
-        msg.innerText = "Error: " + error.message;
+        msg.textContent = error.code === "auth/invalid-credential"
+          ? "Email or password is incorrect." : error.message;
       } finally {
         btn.disabled = false;
       }
     });
-
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-      currentUserEmail = "";
-      document.getElementById('claimCard').classList.add('hidden');
-      document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      resetWorkspace();
+    });
+    onAuthStateChanged(auth, async user => {
+      if (!user) { resetWorkspace(); return; }
+      if (currentUserEmail === user.email?.toLowerCase()) return;
+      try { await establishWorkspace(user); }
+      catch(err) {
+        console.error(err);
+        await signOut(auth);
+        resetWorkspace();
+        const msg = document.getElementById('msg');
+        msg.style.color = "red";
+        msg.textContent = err.message;
+      }
     });
 
     window.switchTab = function(tabName) {
