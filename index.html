@@ -960,6 +960,18 @@
           staffSelect.innerHTML += `<option value="${email}">${email}</option>`;
         });
 
+        const yearSelect = document.getElementById('filterYear');
+        const previousYear = yearSelect.value;
+        const years = [...new Set(allClaimsData.filter(c => c.timestamp?.seconds)
+          .map(c => new Date(c.timestamp.seconds * 1000).getFullYear()))].sort((a,b)=>b-a);
+        yearSelect.innerHTML = '<option value="">All Years</option>';
+        years.forEach(year => {
+          const option = document.createElement('option');
+          option.value = String(year);
+          option.textContent = String(year);
+          yearSelect.appendChild(option);
+        });
+        if (years.map(String).includes(previousYear)) yearSelect.value = previousYear;
         filterClaims();
       } catch (error) {
         console.error(error);
