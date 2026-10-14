@@ -298,7 +298,9 @@
         <label>Password:</label>
         <input type="password" id="loginPassword" placeholder="Enter your password" required>
       </div>
-      <button type="submit" class="submit-btn" id="loginBtn">Login</button>
+      <button type="submit" class="submit-btn" id="loginBtn">Sign in with Email</button>
+      <div style="text-align:center;margin:12px 0;color:#aaa">or</div>
+      <button type="button" class="submit-btn" id="googleLoginBtn" style="background:#fff;color:#222;border:1px solid #ccc">Sign in with Google</button>
       <p id="msg"></p>
     </form>
   </div>
@@ -415,7 +417,7 @@
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -498,6 +500,26 @@
       } finally {
         btn.disabled = false;
       }
+    });
+    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('googleLoginBtn');
+      const msg = document.getElementById('msg');
+      btn.disabled = true;
+      msg.style.color = "#aaa";
+      msg.textContent = "Signing in with Google...";
+      try {
+        const provider = new GoogleAuthProvider();
+        const credential = await signInWithPopup(auth, provider);
+        await establishWorkspace(credential.user);
+        msg.textContent = "";
+      } catch (error) {
+        // An authenticated Google account without a registered SCS profile is not authorized.
+        await signOut(auth);
+        resetWorkspace();
+        msg.style.color = "red";
+        msg.textContent = error.code === "auth/popup-closed-by-user"
+          ? "Google sign-in was cancelled." : error.message;
+      } finally { btn.disabled = false; }
     });
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await signOut(auth);
