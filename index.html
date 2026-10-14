@@ -287,6 +287,10 @@
 #claimCard .history-item .pending-badge {color:#000;}
 #claimCard .history-item .approved-badge,#claimCard .history-item .rejected-badge {color:#fff;}
 @media(max-width:600px){#claimCard .history-item>div:first-child{flex-wrap:wrap;gap:12px;}}
+.report-date-grid {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.7fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:end;}
+.report-date-grid .form-group{margin:0!important;min-width:0;}
+.report-date-grid input,.report-date-grid select{width:100%;min-width:0;}
+@media(max-width:760px){.report-date-grid{grid-template-columns:1fr;}}
 </style></head>
 <body>
 
@@ -387,31 +391,33 @@
           <option value="staff">View By Staff</option>
         </select>
       </div>
-      <div class="form-group" style="margin-bottom:0;">
-        <label for="filterMonth">Month</label>
-        <select id="filterMonth" onchange="filterClaims()">
-          <option value="">All Months</option>
-          <option value="01">January</option>
-          <option value="02">February</option>
-          <option value="03">March</option>
-          <option value="04">April</option>
-          <option value="05">May</option>
-          <option value="06">June</option>
-          <option value="07">July</option>
-          <option value="08">August</option>
-          <option value="09">September</option>
-          <option value="10">October</option>
-          <option value="11">November</option>
-          <option value="12">December</option>
-        </select>
-        <label for="filterYear" style="margin-top:12px">Year</label>
-        <select id="filterYear" onchange="filterClaims()"><option value="">All Years</option></select>
-        <label for="filterStart" style="margin-top:12px">Start Date (optional):</label>
-        <input type="date" id="filterStart" onchange="filterClaims()">
-      </div>
-      <div class="form-group" style="margin-bottom:0;">
-        <label>End Date (optional):</label>
-        <input type="date" id="filterEnd" onchange="filterClaims()">
+      <div class="report-date-grid">
+        <div class="form-group"><label for="filterMonth">Month</label>
+          <select id="filterMonth" onchange="filterClaims()">
+            <option value="">All Months</option>
+            <option value="01">January</option>
+            <option value="02">February</option>
+            <option value="03">March</option>
+            <option value="04">April</option>
+            <option value="05">May</option>
+            <option value="06">June</option>
+            <option value="07">July</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+        </div>
+        <div class="form-group"><label for="filterYear">Year</label>
+          <select id="filterYear" onchange="filterClaims()"><option value="">All Years</option></select>
+        </div>
+        <div class="form-group"><label for="filterStart">Start Date (optional)</label>
+          <input type="date" id="filterStart" onchange="filterClaims()">
+        </div>
+        <div class="form-group"><label for="filterEnd">End Date (optional)</label>
+          <input type="date" id="filterEnd" onchange="filterClaims()">
+        </div>
       </div>
       <div style="margin-top:5px; display: flex; gap: 10px;">
         <button type="button" class="btn print-btn" onclick="printClaimsReport()" style="flex: 1;">Print / Save PDF</button>
